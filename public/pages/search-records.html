@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Records - Milvus Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-database"></i> Milvus Manager
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="bi bi-house"></i> Collections
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/pages/create-collection.html">
+                            <i class="bi bi-plus-circle"></i> Create Collection
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/pages/backup-restore.html">
+                            <i class="bi bi-arrow-down-up"></i> Backup/Restore
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Collections</a></li>
+                        <li class="breadcrumb-item"><a href="#" onclick="viewDetails()">Collection Details</a></li>
+                        <li class="breadcrumb-item active" id="breadcrumb-search">Search Records</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="bi bi-search"></i> Search Records in <span id="collection-name"></span></h4>
+                    </div>
+                    <div class="card-body">
+                        <!-- Search Options -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="filter-expr" class="form-label">Filter Expression</label>
+                                <input type="text" class="form-control" id="filter-expr"
+                                       placeholder="e.g., id > 100 AND id < 200">
+                                <small class="text-muted">Leave empty to get all records</small>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="page-size" class="form-label">Records per page</label>
+                                <select class="form-select" id="page-size">
+                                    <option value="10">10</option>
+                                    <option value="20" selected>20</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">&nbsp;</label>
+                                <button class="btn btn-primary d-block w-100" onclick="searchRecords(1)">
+                                    <i class="bi bi-search"></i> Search
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Results -->
+                        <div id="loading" class="text-center py-5" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+
+                        <div id="results-container" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    Total Records: <span id="total-records" class="fw-bold">0</span>
+                                </div>
+                                <div>
+                                    Page <span id="current-page">1</span> of <span id="total-pages">1</span>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-hover record-table">
+                                    <thead id="table-header">
+                                    </thead>
+                                    <tbody id="table-body">
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Pagination -->
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination justify-content-center" id="pagination">
+                                </ul>
+                            </nav>
+                        </div>
+
+                        <div id="error-container" class="alert alert-danger mt-3" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Record Edit Modal -->
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Record</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-form">
+                        <div id="edit-fields"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveRecord()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this record?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script>
+        let collectionName = null;
+        let currentPage = 1;
+        let totalPages = 1;
+        let currentRecords = [];
+        let editingRecord = null;
+        let deletingRecordId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            collectionName = params.get('collection');
+
+            if (!collectionName) {
+                showError('Collection name not provided');
+                return;
+            }
+
+            document.getElementById('collection-name').textContent = collectionName;
+            document.getElementById('breadcrumb-search').textContent = `Search ${collectionName}`;
+
+            // Initial search
+            searchRecords(1);
+        });
+
+        function viewDetails() {
+            window.location.href = `/pages/collection-details.html?collection=${encodeURIComponent(collectionName)}`;
+        }
+
+        async function searchRecords(page) {
+            const loading = document.getElementById('loading');
+            const resultsContainer = document.getElementById('results-container');
+            const errorContainer = document.getElementById('error-container');
+
+            loading.style.display = 'block';
+            resultsContainer.style.display = 'none';
+            errorContainer.style.display = 'none';
+
+            const filter = document.getElementById('filter-expr').value;
+            const pageSize = parseInt(document.getElementById('page-size').value);
+
+            try {
+                const result = await api.records.search(collectionName, {
+                    page: page,
+                    limit: pageSize,
+                    filter: filter,
+                    outputFields: ['*']
+                });
+
+                if (result.success) {
+                    currentPage = page;
+                    totalPages = result.totalPages || 1;
+                    currentRecords = result.data || [];
+                    renderResults(result);
+                    loading.style.display = 'none';
+                    resultsContainer.style.display = 'block';
+                } else {
+                    throw new Error(result.error || 'Search failed');
+                }
+            } catch (error) {
+                console.error('Error searching records:', error);
+                loading.style.display = 'none';
+                errorContainer.style.display = 'block';
+                errorContainer.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function renderResults(result) {
+            const records = result.data || [];
+
+            // Update counts
+            document.getElementById('total-records').textContent = formatNumber(result.total || 0);
+            document.getElementById('current-page').textContent = currentPage;
+            document.getElementById('total-pages').textContent = totalPages;
+
+            if (records.length === 0) {
+                document.getElementById('table-header').innerHTML = '';
+                document.getElementById('table-body').innerHTML = `
+                    <tr>
+                        <td colspan="100%" class="text-center py-4">No records found</td>
+                    </tr>
+                `;
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            // Get field names
+            const fields = Object.keys(records[0]);
+
+            // Render header
+            const headerHtml = `
+                <tr>
+                    ${fields.map(field => `<th>${field}</th>`).join('')}
+                    <th>Actions</th>
+                </tr>
+            `;
+            document.getElementById('table-header').innerHTML = headerHtml;
+
+            // Render rows
+            const bodyHtml = records.map(record => {
+                const cells = fields.map(field => {
+                    let value = record[field];
+                    if (value === null || value === undefined) {
+                        value = '<em>null</em>';
+                    } else if (typeof value === 'object') {
+                        value = JSON.stringify(value);
+                    }
+                    return `<td class="record-value" title="${escapeHtml(String(value))}">${escapeHtml(String(value))}</td>`;
+                }).join('');
+
+                return `
+                    <tr>
+                        ${cells}
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="editRecord(${record.id})" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteRecord(${record.id})" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('table-body').innerHTML = bodyHtml;
+
+            // Render pagination
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const pagination = document.getElementById('pagination');
+
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+
+            // Previous button
+            html += `
+                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="searchRecords(${currentPage - 1}); return false;">Previous</a>
+                </li>
+            `;
+
+            // Page numbers
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+
+            if (startPage > 1) {
+                html += `
+                    <li class="page-item">
+                        <a class="page-link" href="#" onclick="searchRecords(1); return false;">1</a>
+                    </li>
+                `;
+                if (startPage > 2) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `
+                    <li class="page-item ${i === currentPage ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="searchRecords(${i}); return false;">${i}</a>
+                    </li>
+                `;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+                html += `
+                    <li class="page-item">
+                        <a class="page-link" href="#" onclick="searchRecords(${totalPages}); return false;">${totalPages}</a>
+                    </li>
+                `;
+            }
+
+            // Next button
+            html += `
+                <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="searchRecords(${currentPage + 1}); return false;">Next</a>
+                </li>
+            `;
+
+            pagination.innerHTML = html;
+        }
+
+        function editRecord(id) {
+            const record = currentRecords.find(r => r.id === id);
+            if (!record) {
+                showError('Record not found');
+                return;
+            }
+
+            editingRecord = record;
+            const editFields = document.getElementById('edit-fields');
+
+            const fieldsHtml = Object.entries(record).map(([key, value]) => {
+                const isReadOnly = key === 'id';
+                let inputHtml;
+
+                if (typeof value === 'boolean') {
+                    inputHtml = `
+                        <select class="form-control" id="edit-${key}" ${isReadOnly ? 'disabled' : ''}>
+                            <option value="true" ${value ? 'selected' : ''}>true</option>
+                            <option value="false" ${!value ? 'selected' : ''}>false</option>
+                        </select>
+                    `;
+                } else if (typeof value === 'object' && value !== null) {
+                    inputHtml = `
+                        <textarea class="form-control" id="edit-${key}" rows="3" ${isReadOnly ? 'readonly' : ''}>${JSON.stringify(value, null, 2)}</textarea>
+                    `;
+                } else {
+                    inputHtml = `
+                        <input type="text" class="form-control" id="edit-${key}" value="${escapeHtml(String(value || ''))}" ${isReadOnly ? 'readonly' : ''}>
+                    `;
+                }
+
+                return `
+                    <div class="mb-3">
+                        <label for="edit-${key}" class="form-label">${key}</label>
+                        ${inputHtml}
+                    </div>
+                `;
+            }).join('');
+
+            editFields.innerHTML = fieldsHtml;
+
+            const modal = new bootstrap.Modal(document.getElementById('editModal'));
+            modal.show();
+        }
+
+        async function saveRecord() {
+            if (!editingRecord) return;
+
+            const updatedRecord = {};
+            Object.keys(editingRecord).forEach(key => {
+                const element = document.getElementById(`edit-${key}`);
+                if (element && !element.disabled && !element.readOnly) {
+                    let value = element.value;
+
+                    // Try to parse JSON for object fields
+                    if (typeof editingRecord[key] === 'object' && editingRecord[key] !== null) {
+                        try {
+                            value = JSON.parse(value);
+                        } catch (e) {
+                            // Keep as string if JSON parse fails
+                        }
+                    } else if (typeof editingRecord[key] === 'number') {
+                        value = Number(value);
+                    } else if (typeof editingRecord[key] === 'boolean') {
+                        value = value === 'true';
+                    }
+
+                    updatedRecord[key] = value;
+                } else {
+                    updatedRecord[key] = editingRecord[key];
+                }
+            });
+
+            try {
+                const result = await api.records.update(collectionName, editingRecord.id, updatedRecord);
+                if (result.success) {
+                    showSuccess('Record updated successfully');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
+                    modal.hide();
+                    searchRecords(currentPage);
+                } else {
+                    showError(result.error || 'Update failed');
+                }
+            } catch (error) {
+                showError(`Update failed: ${error.message}`);
+            }
+        }
+
+        function deleteRecord(id) {
+            deletingRecordId = id;
+            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            modal.show();
+        }
+
+        async function confirmDelete() {
+            if (!deletingRecordId) return;
+
+            try {
+                const result = await api.records.delete(collectionName, deletingRecordId);
+                if (result.success) {
+                    showSuccess('Record deleted successfully');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+                    modal.hide();
+                    searchRecords(currentPage);
+                } else {
+                    showError(result.error || 'Delete failed');
+                }
+            } catch (error) {
+                showError(`Delete failed: ${error.message}`);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

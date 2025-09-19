@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collection Details - Milvus Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-database"></i> Milvus Manager
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="bi bi-house"></i> Collections
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/pages/create-collection.html">
+                            <i class="bi bi-plus-circle"></i> Create Collection
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/pages/backup-restore.html">
+                            <i class="bi bi-arrow-down-up"></i> Backup/Restore
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Collections</a></li>
+                        <li class="breadcrumb-item active" id="breadcrumb-collection">Collection Details</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+
+        <div id="loading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <div id="details-container" style="display: none;">
+            <!-- Collection Info -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4><i class="bi bi-info-circle"></i> Collection Information</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Name:</strong> <span id="collection-name"></span></p>
+                                    <p><strong>Description:</strong> <span id="collection-description"></span></p>
+                                    <p><strong>Row Count:</strong> <span id="collection-rowcount"></span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Created Time:</strong> <span id="collection-created"></span></p>
+                                    <p><strong>Number of Fields:</strong> <span id="collection-fields-count"></span></p>
+                                    <p><strong>Number of Indexes:</strong> <span id="collection-indexes-count"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Schema Fields -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4><i class="bi bi-list-columns"></i> Schema Fields</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Field Name</th>
+                                            <th>Data Type</th>
+                                            <th>Description</th>
+                                            <th>Primary Key</th>
+                                            <th>Auto ID</th>
+                                            <th>Properties</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fields-list">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Indexes -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4><i class="bi bi-lightning"></i> Indexes</h4>
+                        </div>
+                        <div class="card-body">
+                            <div id="indexes-container">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4><i class="bi bi-gear"></i> Actions</h4>
+                        </div>
+                        <div class="card-body">
+                            <button class="btn btn-primary" id="btn-search">
+                                <i class="bi bi-search"></i> Search Records
+                            </button>
+                            <button class="btn btn-success" id="btn-backup">
+                                <i class="bi bi-download"></i> Backup Collection
+                            </button>
+                            <button class="btn btn-info" id="btn-load">
+                                <i class="bi bi-box-arrow-in-up"></i> Load to Memory
+                            </button>
+                            <button class="btn btn-secondary" id="btn-release">
+                                <i class="bi bi-box-arrow-down"></i> Release from Memory
+                            </button>
+                            <button class="btn btn-warning" id="btn-truncate">
+                                <i class="bi bi-eraser"></i> Truncate Collection
+                            </button>
+                            <button class="btn btn-danger" id="btn-delete">
+                                <i class="bi bi-trash"></i> Delete Collection
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-container" class="alert alert-danger mt-4" style="display: none;"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/api.js"></script>
+    <script>
+        let collectionName = null;
+        let collectionData = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            collectionName = params.get('collection');
+
+            if (!collectionName) {
+                showError('Collection name not provided');
+                return;
+            }
+
+            document.getElementById('breadcrumb-collection').textContent = collectionName;
+            loadCollectionDetails();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('btn-search').addEventListener('click', () => {
+                window.location.href = `/pages/search-records.html?collection=${encodeURIComponent(collectionName)}`;
+            });
+
+            document.getElementById('btn-backup').addEventListener('click', backupCollection);
+            document.getElementById('btn-load').addEventListener('click', loadCollection);
+            document.getElementById('btn-release').addEventListener('click', releaseCollection);
+            document.getElementById('btn-truncate').addEventListener('click', truncateCollection);
+            document.getElementById('btn-delete').addEventListener('click', deleteCollection);
+        }
+
+        async function loadCollectionDetails() {
+            const loading = document.getElementById('loading');
+            const container = document.getElementById('details-container');
+            const errorContainer = document.getElementById('error-container');
+
+            loading.style.display = 'block';
+            container.style.display = 'none';
+            errorContainer.style.display = 'none';
+
+            try {
+                collectionData = await api.collections.get(collectionName);
+                renderCollectionDetails();
+                loading.style.display = 'none';
+                container.style.display = 'block';
+            } catch (error) {
+                console.error('Error loading collection details:', error);
+                loading.style.display = 'none';
+                errorContainer.style.display = 'block';
+                errorContainer.innerHTML = `
+                    <strong>Error loading collection details:</strong> ${error.message}
+                `;
+            }
+        }
+
+        function renderCollectionDetails() {
+            // Basic info
+            document.getElementById('collection-name').textContent = collectionData.name;
+            document.getElementById('collection-description').textContent = collectionData.description || 'No description';
+            document.getElementById('collection-rowcount').textContent = formatNumber(collectionData.rowCount || 0);
+            document.getElementById('collection-created').textContent = formatDate(collectionData.createdTime);
+            document.getElementById('collection-fields-count').textContent = collectionData.fields?.length || 0;
+            document.getElementById('collection-indexes-count').textContent = collectionData.indexes?.length || 0;
+
+            // Fields
+            const fieldsHtml = collectionData.fields.map(field => {
+                const dataType = getDataTypeName(field.data_type);
+                const properties = [];
+                if (field.dim) properties.push(`Dimension: ${field.dim}`);
+                if (field.max_length) properties.push(`Max Length: ${field.max_length}`);
+
+                return `
+                    <tr>
+                        <td><strong>${field.name}</strong></td>
+                        <td><span class="badge bg-primary">${dataType}</span></td>
+                        <td>${field.description || '-'}</td>
+                        <td>${field.is_primary_key ? '<span class="badge bg-success">Yes</span>' : '-'}</td>
+                        <td>${field.autoID ? '<span class="badge bg-info">Yes</span>' : '-'}</td>
+                        <td>${properties.join(', ') || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('fields-list').innerHTML = fieldsHtml;
+
+            // Indexes
+            const indexesContainer = document.getElementById('indexes-container');
+            if (collectionData.indexes && collectionData.indexes.length > 0) {
+                const indexesHtml = collectionData.indexes.map(index => `
+                    <div class="mb-3 p-3 border rounded">
+                        <h6>Field: ${index.field_name}</h6>
+                        <p>Index Type: ${index.index_type || 'Default'}</p>
+                        <p>Metric Type: ${index.metric_type || 'Default'}</p>
+                        <pre class="json-viewer">${JSON.stringify(index.params || {}, null, 2)}</pre>
+                    </div>
+                `).join('');
+                indexesContainer.innerHTML = indexesHtml;
+            } else {
+                indexesContainer.innerHTML = '<p class="text-muted">No indexes created</p>';
+            }
+        }
+
+        function getDataTypeName(dataType) {
+            const types = {
+                1: 'Bool',
+                2: 'Int8',
+                3: 'Int16',
+                4: 'Int32',
+                5: 'Int64',
+                10: 'Float',
+                11: 'Double',
+                20: 'String',
+                21: 'VarChar',
+                23: 'JSON',
+                100: 'BinaryVector',
+                101: 'FloatVector'
+            };
+            return types[dataType] || `Type ${dataType}`;
+        }
+
+        async function backupCollection() {
+            try {
+                const result = await api.backup.create(collectionName);
+                if (result.success) {
+                    showSuccess(`Backup created successfully: ${result.recordCount} records saved`);
+                } else {
+                    showError(result.error || 'Backup failed');
+                }
+            } catch (error) {
+                showError(`Backup failed: ${error.message}`);
+            }
+        }
+
+        async function loadCollection() {
+            try {
+                const result = await api.collections.load(collectionName);
+                if (result.success) {
+                    showSuccess(result.message);
+                } else {
+                    showError(result.error || 'Load failed');
+                }
+            } catch (error) {
+                showError(`Load failed: ${error.message}`);
+            }
+        }
+
+        async function releaseCollection() {
+            try {
+                const result = await api.collections.release(collectionName);
+                if (result.success) {
+                    showSuccess(result.message);
+                } else {
+                    showError(result.error || 'Release failed');
+                }
+            } catch (error) {
+                showError(`Release failed: ${error.message}`);
+            }
+        }
+
+        async function truncateCollection() {
+            if (!confirm(`Are you sure you want to remove all records from "${collectionName}"?`)) {
+                return;
+            }
+
+            try {
+                const result = await api.collections.truncate(collectionName);
+                if (result.success) {
+                    showSuccess(result.message);
+                    loadCollectionDetails();
+                } else {
+                    showError(result.error || 'Truncate failed');
+                }
+            } catch (error) {
+                showError(`Truncate failed: ${error.message}`);
+            }
+        }
+
+        async function deleteCollection() {
+            if (!confirm(`Are you sure you want to delete collection "${collectionName}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const result = await api.collections.delete(collectionName);
+                if (result.success) {
+                    showSuccess(result.message);
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1500);
+                } else {
+                    showError(result.error || 'Delete failed');
+                }
+            } catch (error) {
+                showError(`Delete failed: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
