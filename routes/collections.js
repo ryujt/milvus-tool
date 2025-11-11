@@ -9,16 +9,24 @@ router.get('/', async (req, res) => {
     const response = await client.listCollections();
 
     if (response.status.error_code === 'Success') {
+      const collectionNames = response.data.map(item =>
+        typeof item === 'string' ? item : (item.name || item.collection_name)
+      );
+
       const collections = await Promise.all(
-        response.data.map(async (name) => {
+        collectionNames.map(async (name) => {
           try {
             const info = await client.describeCollection({ collection_name: name });
             const stats = await client.getCollectionStatistics({ collection_name: name });
 
+            if (!info || !info.schema) {
+              return { name, error: 'Invalid schema' };
+            }
+
             return {
               name,
               schema: info.schema,
-              fields: info.schema.fields,
+              fields: info.schema.fields || [],
               rowCount: stats.stats?.row_count || 0,
               description: info.schema.description || '',
               createdTime: info.created_utc_timestamp,
@@ -51,10 +59,14 @@ router.get('/:name', async (req, res) => {
     const stats = await client.getCollectionStatistics({ collection_name: name });
     const indexes = await client.describeIndex({ collection_name: name });
 
+    if (!info || !info.schema) {
+      return res.status(404).json({ error: 'Collection schema not found' });
+    }
+
     res.json({
       name,
       schema: info.schema,
-      fields: info.schema.fields,
+      fields: info.schema.fields || [],
       rowCount: stats.stats?.row_count || 0,
       description: info.schema.description || '',
       createdTime: info.created_utc_timestamp,
